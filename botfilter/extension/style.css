@@ -1,0 +1,157 @@
+/**
+ * BotFilter – Estilos del Content Script
+ * CSS aislado con prefijo .botfilter- para no interferir con el diseño nativo.
+ */
+
+/* ── Comentario oculto ─────────────────────────────────────────────────── */
+.botfilter-hidden {
+  display: none !important;
+}
+
+.botfilter-revealed {
+  opacity: 0.7;
+  border-left: 3px solid #f59e0b;
+  padding-left: 8px;
+  transition: opacity 0.3s ease;
+}
+
+.botfilter-revealed:hover {
+  opacity: 1;
+}
+
+/* ── Marcador visual ───────────────────────────────────────────────────── */
+.botfilter-marker {
+  all: initial;
+  display: block !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  margin: 4px 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.botfilter-marker-inner {
+  all: initial;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  padding: 7px 10px !important;
+  background: #fff8e1 !important;
+  border: 1px solid #fde68a !important;
+  border-left: 3px solid #f59e0b !important;
+  border-radius: 6px !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .botfilter-marker-inner {
+    background: #1c1a0e !important;
+    border-color: #92400e !important;
+    border-left-color: #f59e0b !important;
+  }
+
+  .botfilter-text strong {
+    color: #fcd34d !important;
+  }
+
+  .botfilter-score {
+    color: #a8956a !important;
+  }
+
+  .botfilter-show-btn {
+    background: #292117 !important;
+    color: #fcd34d !important;
+    border-color: #92400e !important;
+  }
+
+  .botfilter-show-btn:hover {
+    background: #3b2e10 !important;
+  }
+}
+
+.botfilter-marker-left {
+  all: initial;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.botfilter-icon {
+  all: initial;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+.botfilter-text {
+  all: initial;
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+}
+
+.botfilter-text strong {
+  all: initial;
+  display: block !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #92400e !important;
+  line-height: 1.3 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.botfilter-score {
+  all: initial;
+  display: block !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-size: 10px !important;
+  color: #a8956a !important;
+  line-height: 1.3 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  margin-top: 1px !important;
+}
+
+/* ── Botón "Mostrar" ───────────────────────────────────────────────────── */
+.botfilter-show-btn {
+  all: initial !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: #92400e !important;
+  background: #fef3c7 !important;
+  border: 1px solid #fde68a !important;
+  border-radius: 4px !important;
+  padding: 3px 9px !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  transition: background 0.15s ease !important;
+  line-height: 1.5 !important;
+}
+
+.botfilter-show-btn:hover {
+  background: #fde68a !important;
+  outline: none !important;
+}
+
+.botfilter-show-btn:active {
+  background: #fcd34d !important;
+}
+
+.botfilter-show-btn:focus-visible {
+  outline: 2px solid #f59e0b !important;
+  outline-offset: 2px !important;
+}

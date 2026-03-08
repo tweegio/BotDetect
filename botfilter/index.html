@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="description" content="Detecta si un comentario es de un bot o spam en segundos. Funciona en cualquier dispositivo." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BotFilter" />
+  <title>BotFilter — ¿Bot o persona real?</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── TOKENS ─────────────────────────────────────────────────────────── */
+    :root {
+      --bg:        #0a0a0f;
+      --surface:   #111118;
+      --surface2:  #18181f;
+      --border:    #1f1f2e;
+      --border2:   #2a2a3a;
+      --text:      #f0f0f8;
+      --muted:     #5a5a72;
+      --muted2:    #3a3a52;
+      --accent:    #f59e0b;
+      --accent2:   #fbbf24;
+      --danger:    #ef4444;
+      --ok:        #22c55e;
+      --warn:      #f59e0b;
+      --radius:    14px;
+      --radius-sm: 8px;
+    }
+
+    [data-theme="light"] {
+      --bg:       #f5f4f0;
+      --surface:  #ffffff;
+      --surface2: #f0efe8;
+      --border:   #e0ddd4;
+      --border2:  #ccc9be;
+      --text:     #1a1a22;
+      --muted:    #888880;
+      --muted2:   #c0bdb4;
+    }
+
+    /* ── RESET ───────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      transition: background 0.3s, color 0.3s;
+      overflow-x: hidden;
+    }
+
+    /* ── BACKGROUND NOISE + GRID ─────────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 20% 0%, rgba(245,158,11,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(239,68,68,0.05) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────────────────────────── */
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 540px;
+      margin: 0 auto;
+      padding: 0 16px 100px;
+    }
+
+    /* ── HEADER ──────────────────────────────────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 0 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), #ef4444);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 4px 16px rgba(245,158,11,0.3);
+    }
+
+    .brand-name {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+
+    .brand-name span { color: var(--accent); }
+
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: all 0.15s;
+    }
+    .icon-btn:hover { border-color: var(--border2); color: var(--text); }
+
+    /* ── HERO ────────────────────────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 8px 0 28px;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .hero h1 {
+      font-size: clamp(26px, 7vw, 38px);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -1px;
+      margin-bottom: 10px;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(90deg, var(--accent), #ef4444);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+      font-weight: 400;
+      max-width: 340px;
+      margin: 0 auto;
+    }
+
+    /* ── INPUT CARD ──────────────────────────────────────────────────────── */
+    .input-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: fadeUp 0.5s 0.1s ease both;
+      transition: border-color 0.2s;
+    }
+
+    .input-card:focus-within { border-color: var(--border2); }
+
+    .textarea-wrap { position: relative; }
+
+    textarea {
+      width: 100%;
+      min-height: 130px;
+      padding: 16px;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      resize: none;
+      display: block;
+    }
+
+    textarea::placeholder { color: var(--muted2); }
+
+    .char-count {
+      position: absolute;
+      bottom: 8px;
+      right: 12px;
+      font-size: 10px;
+      font-family: 'DM Mono', monospace;
+      color: var(--muted2);
+      pointer-events: none;
+    }
+
+    .input-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+      gap: 10px;
+    }
+
+    .paste-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      transition: all 0.15s;
+      font-family: 'Syne', sans-serif;
+    }
+    .paste-btn:hover { background: var(--surface2); color: var(--text); }
+
+    .analyze-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: #0a0a0f;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 9px 18px;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: -0.2px;
+    }
+    .analyze-btn:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(245,158,11,0.35); }
+    .analyze-btn:active { transform: translateY(0); }
+    .analyze-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── RESULT CARD ─────────────────────────────────────────────────────── */
+    .result-card {
+      margin-top: 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      animation: fadeUp 0.35s ease both;
+      display: none;
+    }
+
+    .result-card.visible { display: block; }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 16px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .verdict-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .verdict-icon.bot     { background: rgba(239,68,68,0.12); }
+    .verdict-icon.warning { background: rgba(245,158,11,0.12); }
+    .verdict-icon.ok      { background: rgba(34,197,94,0.12); }
+
+    .verdict-text h2 {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+    }
+
+    .verdict-text h2.bot     { color: var(--danger); }
+    .verdict-text h2.warning { color: var(--warn); }
+    .verdict-text h2.ok      { color: var(--ok); }
+
+    .verdict-text p {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+      font-weight: 400;
+    }
+
+    /* ── SCORE BAR ───────────────────────────────────────────────────────── */
+    .score-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+
+    .score-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+
+    .score-label span:first-child {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .score-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 20px;
+      font-weight: 500;
+    }
+
+    .score-num.bot     { color: var(--danger); }
+    .score-num.warning { color: var(--warn); }
+    .score-num.ok      { color: var(--ok); }
+
+    .score-bar-track {
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .score-bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .score-bar-fill.bot     { background: linear-gradient(90deg, #ef4444, #dc2626); }
+    .score-bar-fill.warning { background: linear-gradient(90deg, #f59e0b, #d97706); }
+    .score-bar-fill.ok      { background: linear-gradient(90deg, #22c55e, #16a34a); }
+
+    /* ── SIGNALS ─────────────────────────────────────────────────────────── */
+    .signals-section { padding: 14px 16px; }
+
+    .signals-title {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+    }
+
+    .signal-list { display: flex; flex-direction: column; gap: 6px; }
+
+    .signal-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+    }
+
+    .signal-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .signal-dot.red    { background: var(--danger); box-shadow: 0 0 6px rgba(239,68,68,0.5); }
+    .signal-dot.yellow { background: var(--warn);   box-shadow: 0 0 6px rgba(245,158,11,0.5); }
+
+    .signal-text { flex: 1; color: var(--text); line-height: 1.4; }
+    .signal-pts  { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+    .no-signals {
+      text-align: center;
+      padding: 16px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ── HISTORY ─────────────────────────────────────────────────────────── */
+    .history-section {
+      margin-top: 24px;
+      animation: fadeUp 0.5s 0.2s ease both;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .section-header h3 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .clear-btn {
+      font-size: 11px;
+      color: var(--muted2);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'Syne', sans-serif;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .clear-btn:hover { color: var(--danger); background: rgba(239,68,68,0.08); }
+
+    .history-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .history-item:hover { border-color: var(--border2); background: var(--surface2); }
+
+    .history-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .history-badge.bot     { background: rgba(239,68,68,0.12); }
+    .history-badge.warning { background: rgba(245,158,11,0.12); }
+    .history-badge.ok      { background: rgba(34,197,94,0.12); }
+
+    .history-content { flex: 1; min-width: 0; }
+
+    .history-preview {
+      font-size: 12px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-meta {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .history-score {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .history-score.bot     { color: var(--danger); }
+    .history-score.warning { color: var(--warn); }
+    .history-score.ok      { color: var(--ok); }
+
+    .history-empty {
+      text-align: center;
+      padding: 28px 16px;
+      color: var(--muted2);
+      font-size: 13px;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-sm);
+    }
+
+    /* ── INSTALL BANNER ──────────────────────────────────────────────────── */
+    .install-banner {
+      margin-top: 24px;
+      padding: 14px 16px;
+      background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(239,68,68,0.05));
+      border: 1px solid rgba(245,158,11,0.2);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: fadeUp 0.5s 0.3s ease both;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .install-banner:hover { border-color: rgba(245,158,11,0.4); }
+
+    .install-banner-icon { font-size: 24px; flex-shrink: 0; }
+
+    .install-banner-text h4 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .install-banner-text p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+      font-weight: 400;
+    }
+
+    .install-banner-arrow { margin-left: auto; font-size: 16px; color: var(--muted); }
+
+    /* ── BOTTOM NAV ──────────────────────────────────────────────────────── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(10,10,15,0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      padding: 10px 0 max(10px, env(safe-area-inset-bottom));
+      z-index: 100;
+    }
+
+    [data-theme="light"] .bottom-nav {
+      background: rgba(245,244,240,0.92);
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 6px 20px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-family: 'Syne', sans-serif;
+    }
+
+    .nav-item.active { color: var(--accent); }
+
+    .nav-item span:first-child { font-size: 20px; }
+    .nav-item span:last-child  { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+
+    /* ── VIEWS ───────────────────────────────────────────────────────────── */
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ── ABOUT VIEW ──────────────────────────────────────────────────────── */
+    .about-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 16px;
+      margin-bottom: 12px;
+      animation: fadeUp 0.35s ease both;
+    }
+
+    .about-card h3 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .signal-table { width: 100%; border-collapse: collapse; }
+
+    .signal-table th {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 6px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .signal-table td {
+      font-size: 12px;
+      padding: 8px 8px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .signal-table tr:last-child td { border-bottom: none; }
+
+    .pts-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 20px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .pts-badge.high { background: rgba(239,68,68,0.12); color: var(--danger); }
+    .pts-badge.mid  { background: rgba(245,158,11,0.12); color: var(--warn); }
+    .pts-badge.low  { background: rgba(34,197,94,0.12); color: var(--ok); }
+
+    .donate-card {
+      background: linear-gradient(135deg, #1a1200, #110a00);
+      border: 1px solid rgba(245,158,11,0.2);
+      border-radius: var(--radius);
+      padding: 20px 16px;
+      text-align: center;
+      animation: fadeUp 0.35s 0.1s ease both;
+    }
+
+    [data-theme="light"] .donate-card {
+      background: linear-gradient(135deg, #fffbf0, #fff7e0);
+    }
+
+    .donate-card h3 { font-size: 16px; font-weight: 800; margin-bottom: 6px; }
+    .donate-card p  { font-size: 13px; color: var(--muted); margin-bottom: 16px; font-weight: 400; line-height: 1.5; }
+
+    .donate-link {
+      display: inline-block;
+      background: var(--accent);
+      color: #0a0a0f;
+      font-family: 'Syne', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 12px 28px;
+      border-radius: 10px;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .donate-link:hover { background: var(--accent2); transform: translateY(-1px); }
+
+    .hidden { display: none !important; }
+
+    /* ── ANIMATIONS ──────────────────────────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.5; }
+    }
+
+    .analyzing { animation: pulse 0.8s ease infinite; }
+
+    /* ── TOAST ───────────────────────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 72px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 18px;
+      border-radius: 30px;
+      opacity: 0;
+      transition: all 0.25s;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 200;
+    }
+
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────────────────── */
+    @media (min-width: 600px) {
+      .container { padding: 0 24px 100px; }
+      textarea { min-height: 150px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🤖</div>
+      <span class="brand-name">Bot<span>Filter</span></span>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="themeToggle" title="Cambiar tema">🌙</button>
+    </div>
+  </header>
+
+  <!-- VIEW: ANALIZAR -->
+  <div class="view active" id="view-analyze">
+
+    <div class="hero">
+      <h1>¿Bot o<br><em>persona real?</em></h1>
+      <p>Pegá cualquier comentario de redes sociales y lo analizamos en segundos.</p>
+    </div>
+
+    <div class="input-card">
+      <div class="textarea-wrap">
+        <textarea
+          id="commentInput"
+          placeholder="Pegá aquí el comentario a analizar...&#10;&#10;Ej: &quot;Great post! Check my profile, DM me for money opportunities 💰&quot;"
+          maxlength="2000"
+          spellcheck="false"
+        ></textarea>
+        <span class="char-count" id="charCount">0/2000</span>
+      </div>
+      <div class="input-footer">
+        <button class="paste-btn" id="pasteBtn">
+          📋 Pegar
+        </button>
+        <button class="paste-btn hidden" id="clearBtn" style="color: var(--danger);">
+          🗑️ Limpiar
+        </button>
+        <button class="analyze-btn" id="analyzeBtn" disabled>
+          Analizar →
+        </button>
+      </div>
+    </div>
+
+    <!-- RESULT -->
+    <div class="result-card" id="resultCard">
+      <div class="result-header">
+        <div class="verdict-icon" id="verdictIcon"></div>
+        <div class="verdict-text">
+          <h2 id="verdictTitle"></h2>
+          <p id="verdictSub"></p>
+        </div>
+      </div>
+
+      <div class="score-section">
+        <div class="score-label">
+          <span>Puntuación de riesgo</span>
+          <span class="score-num" id="scoreNum"></span>
+        </div>
+        <div class="score-bar-track">
+          <div class="score-bar-fill" id="scoreBar" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <div class="signals-section">
+        <div class="signals-title">Señales detectadas</div>
+        <div class="signal-list" id="signalList"></div>
+      </div>
+    </div>
+
+    <!-- INSTALL BANNER -->
+    <div class="install-banner" id="installBanner" style="display:none">
+      <div class="install-banner-icon">📲</div>
+      <div class="install-banner-text">
+        <h4>Instalar como app</h4>
+        <p>Agregá BotFilter a tu pantalla de inicio para acceso rápido</p>
+      </div>
+      <span class="install-banner-arrow">›</span>
+    </div>
+
+  </div>
+
+  <!-- VIEW: HISTORIAL -->
+  <div class="view" id="view-history">
+    <div style="padding: 8px 0 20px">
+      <div class="section-header">
+        <h3>Historial reciente</h3>
+        <button class="clear-btn" id="clearHistory">Limpiar</button>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- VIEW: ACERCA DE -->
+  <div class="view" id="view-about">
+    <div style="padding: 8px 0 20px">
+
+      <div class="about-card">
+        <h3>🧠 Cómo funciona</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px;font-weight:400;line-height:1.6">
+          BotFilter usa un sistema de puntuación heurístico. Cada comentario acumula puntos según distintas señales. Si supera el umbral, es marcado como bot.
+        </p>
+        <table class="signal-table">
+          <thead>
+            <tr>
+              <th>Señal</th>
+              <th>Puntos</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Frase spam conocida</td><td><span class="pts-badge high">+2</span></td></tr>
+            <tr><td>Comentario duplicado</td><td><span class="pts-badge high">+3</span></td></tr>
+            <tr><td>URL externa / acortador</td><td><span class="pts-badge mid">+1.5</span></td></tr>
+            <tr><td>Muy similar a otro comentario</td><td><span class="pts-badge mid">+1.5</span></td></tr>
+            <tr><td>Comentario genérico muy corto</td><td><span class="pts-badge mid">+1.5</span></td></tr>
+            <tr><td>Emojis de dinero 💰</td><td><span class="pts-badge mid">+1.5</span></td></tr>
+            <tr><td>Todo en mayúsculas</td><td><span class="pts-badge low">+1</span></td></tr>
+            <tr><td>Exceso de ! o emojis</td><td><span class="pts-badge low">+0.5</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="about-card">
+        <h3>🔒 Privacidad</h3>
+        <p style="font-size:13px;color:var(--muted);font-weight:400;line-height:1.6">
+          Todo el análisis ocurre <strong style="color:var(--text)">directamente en tu dispositivo</strong>. No enviamos ningún texto a servidores externos. Sin tracking, sin anuncios, sin cuentas.
+        </p>
+      </div>
+
+      <div class="about-card" style="margin-bottom:12px">
+        <h3>🌐 Compatibilidad</h3>
+        <p style="font-size:13px;color:var(--muted);font-weight:400;line-height:1.6;margin-bottom:10px">
+          Esta web app funciona en <strong style="color:var(--text)">cualquier dispositivo</strong> sin instalar nada. En computadora también podés usar la extensión de Chrome para filtrado automático.
+        </p>
+        <a href="https://github.com/tu-usuario/botfilter-extension" target="_blank" style="font-size:12px;color:var(--accent);text-decoration:none;font-weight:600">
+          → Ver extensión de Chrome en GitHub
+        </a>
+      </div>
+
+      <div class="donate-card">
+        <h3>☕ ¿Te fue útil?</h3>
+        <p>BotFilter es gratis y sin anuncios. Si te ayuda, podés apoyar el proyecto con un café.</p>
+        <a class="donate-link" href="https://buymeacoffee.com/" target="_blank" rel="noopener">
+          ☕ Invitar un café
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-item active" id="nav-analyze" onclick="switchView('analyze')">
+    <span>🔍</span>
+    <span>Analizar</span>
+  </button>
+  <button class="nav-item" id="nav-history" onclick="switchView('history')">
+    <span>🕐</span>
+    <span>Historial</span>
+  </button>
+  <button class="nav-item" id="nav-about" onclick="switchView('about')">
+    <span>ℹ️</span>
+    <span>Acerca de</span>
+  </button>
+</nav>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── ENGINE: mismo algoritmo que content.js ─────────────────────────────── */
+const BOT_PHRASES = [
+  'great post','amazing content','nice article','nice post','good post',
+  'love this','awesome post','great content','fantastic post','wonderful post',
+  'beautiful post','check my profile','check out my profile','visit my profile',
+  'dm me','message me','contact me for','inbox me','earn money fast',
+  'make money online','work from home','passive income','financial freedom',
+  'crypto investment','i made $','i earned $','join now','click the link',
+  'link in bio','follow me back','follow for follow','f4f','l4l','like for like',
+  '🔥🔥🔥','💯💯💯','👇👇👇','congratulations you have been selected',
+  'you are the lucky winner','claim your prize','limited time offer','act now',
+];
+
+const BOT_PATTERNS = [
+  { re: /\bhttps?:\/\/\S+/gi,                         label: 'Contiene URL externa',           pts: 1.5 },
+  { re: /\b(bit\.ly|tinyurl|t\.co|goo\.gl)\//i,       label: 'URL acortada (spam típico)',      pts: 1.5 },
+  { re: /(.)\1{4,}/,                                   label: 'Caracteres repetidos (aaaaa)',    pts: 1.5 },
+  { re: /(\b\w+\b)(\s+\1){2,}/i,                      label: 'Palabras repetidas en bucle',     pts: 1.5 },
+  { re: /💰|💵|💸|🤑/,                               label: 'Emojis de dinero',                pts: 1.5 },
+];
+
+const commentHistory = [];
+
+function jaccardSimilarity(a, b) {
+  const sa = new Set(a.split(/\s+/)), sb = new Set(b.split(/\s+/));
+  const inter = new Set([...sa].filter(x => sb.has(x)));
+  const union = new Set([...sa, ...sb]);
+  return union.size === 0 ? 0 : inter.size / union.size;
+}
+
+function scoreComment(text) {
+  const lower = text.toLowerCase().trim();
+  let score = 0;
+  const signals = [];
+
+  // Frases spam
+  for (const phrase of BOT_PHRASES) {
+    if (lower.includes(phrase)) {
+      score += 2;
+      signals.push({ label: `Frase spam: "${phrase}"`, pts: 2, level: 'high' });
+      break;
+    }
+  }
+
+  // Patrones regex
+  for (const p of BOT_PATTERNS) {
+    p.re.lastIndex = 0;
+    if (p.re.test(text)) {
+      score += p.pts;
+      signals.push({ label: p.label, pts: p.pts, level: p.pts >= 1.5 ? 'high' : 'mid' });
+    }
+  }
+
+  // Comentario genérico corto
+  const words = lower.split(/\s+/).filter(w => w.length > 0);
+  if (words.length <= 3 && /^(nice|great|good|wow|yes|ok|cool|awesome|amazing|lol|haha|😂|❤️|👍)+[\s!.]*$/i.test(lower)) {
+    score += 1.5;
+    signals.push({ label: 'Comentario genérico muy corto', pts: 1.5, level: 'mid' });
+  }
+
+  // Mayúsculas excesivas
+  if (text.length > 10 && text === text.toUpperCase() && /[A-Z]/.test(text)) {
+    score += 1;
+    signals.push({ label: 'Escrito todo en mayúsculas', pts: 1, level: 'mid' });
+  }
+
+  // Exceso de !
+  const bangs = (text.match(/!/g) || []).length;
+  if (bangs > 3) {
+    score += 0.5;
+    signals.push({ label: `${bangs} signos de exclamación`, pts: 0.5, level: 'low' });
+  }
+
+  // Exceso de emojis
+  const emojis = (text.match(/\p{Emoji}/gu) || []).length;
+  if (emojis > 5) {
+    score += 0.5;
+    signals.push({ label: `${emojis} emojis en el texto`, pts: 0.5, level: 'low' });
+  }
+
+  // Similitud con historial
+  for (const prev of commentHistory) {
+    const sim = jaccardSimilarity(lower, prev);
+    if (sim > 0.85) {
+      score += 3;
+      signals.push({ label: 'Comentario idéntico o casi igual al anterior', pts: 3, level: 'high' });
+      break;
+    } else if (sim > 0.6) {
+      score += 1.5;
+      signals.push({ label: 'Muy similar a un análisis anterior', pts: 1.5, level: 'mid' });
+      break;
+    }
+  }
+
+  commentHistory.push(lower);
+  if (commentHistory.length > 50) commentHistory.shift();
+
+  return { score: Math.round(score * 10) / 10, signals };
+}
+
+function getVerdict(score) {
+  if (score >= 4)   return { type: 'bot',     icon: '🤖', title: 'Muy probable bot o spam',    sub: `Puntuación alta (${score}). Múltiples señales detectadas.` };
+  if (score >= 2.5) return { type: 'warning', icon: '⚠️', title: 'Comportamiento sospechoso',  sub: `Puntuación media (${score}). Proceder con precaución.` };
+  return               { type: 'ok',      icon: '✅', title: 'Parece un humano real',       sub: `Puntuación baja (${score}). Sin señales preocupantes.` };
+}
+
+/* ── HISTORY STORAGE ─────────────────────────────────────────────────────── */
+let analysisHistory = JSON.parse(sessionStorage.getItem('bf_history') || '[]');
+
+function saveHistory(text, score, verdict) {
+  analysisHistory.unshift({
+    text: text.slice(0, 120),
+    score, verdict,
+    ts: new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+  });
+  if (analysisHistory.length > 20) analysisHistory.pop();
+  sessionStorage.setItem('bf_history', JSON.stringify(analysisHistory));
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if (analysisHistory.length === 0) {
+    list.innerHTML = '<div class="history-empty">📭 Todavía no analizaste ningún comentario</div>';
+    return;
+  }
+  list.innerHTML = analysisHistory.map((item, i) => `
+    <div class="history-item" onclick="reloadFromHistory(${i})">
+      <div class="history-badge ${item.verdict}">
+        ${ item.verdict === 'bot' ? '🤖' : item.verdict === 'warning' ? '⚠️' : '✅' }
+      </div>
+      <div class="history-content">
+        <div class="history-preview">${escapeHtml(item.text)}</div>
+        <div class="history-meta">${item.ts}</div>
+      </div>
+      <span class="history-score ${item.verdict}">${item.score}</span>
+    </div>
+  `).join('');
+}
+
+function reloadFromHistory(i) {
+  const item = analysisHistory[i];
+  document.getElementById('commentInput').value = item.text;
+  updateCharCount();
+  switchView('analyze');
+  setTimeout(() => document.getElementById('analyzeBtn').click(), 100);
+}
+
+/* ── UI ──────────────────────────────────────────────────────────────────── */
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'history') renderHistory();
+}
+
+function updateCharCount() {
+  const val = document.getElementById('commentInput').value;
+  document.getElementById('charCount').textContent = `${val.length}/2000`;
+  document.getElementById('analyzeBtn').disabled = val.trim().length < 3;
+  document.getElementById('clearBtn').classList.toggle('hidden', val.length === 0);
+}
+
+function runAnalysis() {
+  const text = document.getElementById('commentInput').value.trim();
+  if (!text) return;
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.textContent = 'Analizando…';
+  btn.classList.add('analyzing');
+  btn.disabled = true;
+
+  // Simular pequeño delay para sensación de procesamiento
+  setTimeout(() => {
+    const { score, signals } = scoreComment(text);
+    const verdict = getVerdict(score);
+
+    // Guardar en historial
+    saveHistory(text, score, verdict.type);
+
+    // Render resultado
+    const card = document.getElementById('resultCard');
+    document.getElementById('verdictIcon').className = `verdict-icon ${verdict.type}`;
+    document.getElementById('verdictIcon').textContent = verdict.icon;
+    document.getElementById('verdictTitle').className = verdict.type;
+    document.getElementById('verdictTitle').textContent = verdict.title;
+    document.getElementById('verdictSub').textContent = verdict.sub;
+
+    // Score bar
+    const maxScore = 8;
+    const pct = Math.min(100, (score / maxScore) * 100);
+    document.getElementById('scoreNum').className = `score-num ${verdict.type}`;
+    document.getElementById('scoreNum').textContent = `${score} pts`;
+    document.getElementById('scoreBar').className = `score-bar-fill ${verdict.type}`;
+    setTimeout(() => {
+      document.getElementById('scoreBar').style.width = pct + '%';
+    }, 50);
+
+    // Señales
+    const sigList = document.getElementById('signalList');
+    if (signals.length === 0) {
+      sigList.innerHTML = '<div class="no-signals">✨ Sin señales de alerta encontradas</div>';
+    } else {
+      sigList.innerHTML = signals.map(s => `
+        <div class="signal-item">
+          <div class="signal-dot ${s.level === 'high' ? 'red' : 'yellow'}"></div>
+          <span class="signal-text">${escapeHtml(s.label)}</span>
+          <span class="signal-pts">+${s.pts}</span>
+        </div>
+      `).join('');
+    }
+
+    card.classList.add('visible');
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    btn.textContent = 'Analizar →';
+    btn.classList.remove('analyzing');
+    btn.disabled = false;
+  }, 400);
+}
+
+/* ── EVENTS ──────────────────────────────────────────────────────────────── */
+document.getElementById('commentInput').addEventListener('input', updateCharCount);
+document.getElementById('analyzeBtn').addEventListener('click', runAnalysis);
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('commentInput').value = '';
+  updateCharCount();
+  const card = document.getElementById('resultCard');
+  card.classList.remove('visible');
+  document.getElementById('scoreBar').style.width = '0%';
+  document.getElementById('commentInput').focus();
+});
+
+document.getElementById('pasteBtn').addEventListener('click', async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    document.getElementById('commentInput').value = text;
+    updateCharCount();
+    showToast('📋 Texto pegado');
+  } catch (_) {
+    showToast('⚠️ Permiso de portapapeles denegado');
+  }
+});
+
+document.getElementById('clearHistory').addEventListener('click', () => {
+  analysisHistory = [];
+  sessionStorage.removeItem('bf_history');
+  renderHistory();
+  showToast('🗑️ Historial borrado');
+});
+
+// Tema oscuro/claro
+let isDark = true;
+document.getElementById('themeToggle').addEventListener('click', () => {
+  isDark = !isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  document.getElementById('themeToggle').textContent = isDark ? '🌙' : '☀️';
+});
+
+// Enter para analizar
+document.getElementById('commentInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.ctrlKey) runAnalysis();
+});
+
+/* ── PWA INSTALL ─────────────────────────────────────────────────────────── */
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').style.display = 'flex';
+});
+
+document.getElementById('installBanner').addEventListener('click', () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      document.getElementById('installBanner').style.display = 'none';
+    });
+  }
+});
+
+// Service Worker para modo offline
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+</script>
+
+</body>
+</html>
